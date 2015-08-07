@@ -6,11 +6,16 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.image.BufferStrategy;
 
+import javax.swing.Box;
 import javax.swing.JFrame;
+import javax.swing.JLabel;
 import javax.swing.JMenu;
 import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
+import javax.swing.JSlider;
+import javax.swing.event.ChangeEvent;
+import javax.swing.event.ChangeListener;
 
 
 public class GameOfLife extends Canvas implements Runnable
@@ -21,11 +26,14 @@ public class GameOfLife extends Canvas implements Runnable
 	private JFrame frame;
 	private JMenuBar menuBar;
 	private JMenu menu, subMenu, info;
-	private JMenuItem startItem, clearItem, slowMode, medMode, fastMode, default60, uberFast, author;
+	private JMenuItem startItem, clearItem, author;
+	private JLabel population;
+	private JSlider slider;
 	private String title;
 	private int width, height;
 	private Thread thread;
 	private Map map;
+	private CellsEvolve cells;
 	private MouseControl mouse;
 	private boolean simulating = false;
 	private double ups = 60.0;
@@ -42,7 +50,7 @@ public class GameOfLife extends Canvas implements Runnable
 		this.height = height;
 		
 		map = new Map((this.width / BLOCK_SIZE)+15, (this.height / BLOCK_SIZE)+15);
-		
+		cells = new CellsEvolve(map.getCells(), map.getWidth(), map.getHeight());
 		
 		menuBar = new JMenuBar();
 		menu = new JMenu("Actions");
@@ -55,6 +63,7 @@ public class GameOfLife extends Canvas implements Runnable
 			{
 				if(startItem.getText().equals("Start"))
 				{
+					ups = (double)slider.getValue();
 					simulating = true;
 					startItem.setText("Stop");
 				}
@@ -78,9 +87,7 @@ public class GameOfLife extends Canvas implements Runnable
 					JOptionPane.showMessageDialog(frame, "Stop simulating first!");
 					return;
 				}
-				for(int y = 0; y < map.getHeight(); y++)
-					for(int x = 0; x < map.getWidth(); x++)
-						map.getCell(x, y).setStatus(CellStatus.DEAD);
+				map.clearMap();
 			}
 		});
 		
@@ -89,52 +96,14 @@ public class GameOfLife extends Canvas implements Runnable
 		subMenu = new JMenu("Speed");
 		menu.add(subMenu);
 		
-		slowMode = new JMenuItem("Slow");
-		medMode = new JMenuItem("Medium");
-		fastMode = new JMenuItem("Fast");
-		default60 = new JMenuItem("Super fast");
-		uberFast = new JMenuItem("Uber fast");
-		
-		subMenu.add(slowMode);
-		subMenu.add(medMode);
-		subMenu.add(fastMode);
-		subMenu.add(default60);
-		subMenu.add(uberFast);
-		
-		slowMode.addActionListener(new ActionListener() {
+		slider = new JSlider(JSlider.HORIZONTAL, 5, 80, 60);
+		slider.addChangeListener(new ChangeListener() {
 			@Override
-			public void actionPerformed(ActionEvent e) {
-				ups = 5.0;
+			public void stateChanged(ChangeEvent e) {
+				ups = (double)slider.getValue();
 			}
 		});
-		
-		medMode.addActionListener(new ActionListener() {
-			@Override
-			public void actionPerformed(ActionEvent e) {
-				ups = 10.0;
-			}
-		});
-		
-		fastMode.addActionListener(new ActionListener() {
-			@Override
-			public void actionPerformed(ActionEvent e) {
-				ups = 20.0;
-			}
-		});
-		
-		default60.addActionListener(new ActionListener() {	
-			@Override
-			public void actionPerformed(ActionEvent e) {
-				ups = 60.0;
-			}
-		});
-		uberFast.addActionListener(new ActionListener() {
-			@Override
-			public void actionPerformed(ActionEvent e) {
-				ups = 120.0;
-			}
-		});
-		
+		subMenu.add(slider);
 		info = new JMenu("Info");
 		menuBar.add(info);
 		author = new JMenuItem("Author");
@@ -145,6 +114,10 @@ public class GameOfLife extends Canvas implements Runnable
 				JOptionPane.showMessageDialog(frame, "Created by Karol Miksztal");
 			}
 		});
+		
+		population = new JLabel("Pupulation: ");
+		menuBar.add(Box.createRigidArea(new Dimension(this.width-200,0)));
+		menuBar.add(population);
 		
 
 		// frame settings
@@ -159,7 +132,6 @@ public class GameOfLife extends Canvas implements Runnable
 		frame.pack();
 		frame.setVisible(true);
 		
-	
 		
 		mouse = new MouseControl();
 		addMouseListener(mouse);
@@ -223,7 +195,7 @@ public class GameOfLife extends Canvas implements Runnable
 	{
 		if(simulating)
 		{
-			map.evolve();
+			cells.evolve();
 		}
 		else if(mouse.isPressed())
 		{
@@ -237,10 +209,9 @@ public class GameOfLife extends Canvas implements Runnable
 			
 		}
 	}
-	
-
 	public void render()
 	{
+		population.setText("Population: " + cells.getPopulation().getNumberOfActiveCells());
 		BufferStrategy bs = getBufferStrategy();
 		if(bs == null)
 		{

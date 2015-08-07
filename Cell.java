@@ -15,9 +15,7 @@ public class Cell
 	
 	public boolean isAlive()
 	{
-		if(status == CellStatus.ALIVE)
-			return true;
-		return false;
+		return this.status == CellStatus.ALIVE;
 	}
 	
 	
